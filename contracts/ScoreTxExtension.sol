@@ -1,29 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "./interfaces/ISlashCustomPlugin.sol";
 import "./libs/UniversalERC20.sol";
-import "../node_modules/@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
 
-//RecordScore.solを読み込む
-interface IfRecordScore {
-    function scoreTransaction(
-        address sender,
-        address receiveToken, 
-        uint256 amount,
-        string memory paymentId,
-        string memory optional
-    ) external returns (uint256);
-}
+import "./interfaces/ISlashCustomPlugin.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
-    using SafeMath for uint256;
     using UniversalERC20 for IERC20;
+
     address public contractOwner;
     address public scoreBoard;
 
-    //mapping(string => uint256) public purchaseInfo;
+    function receivePayment(
+        address receiveToken,
+        uint256 amount,
+        bytes calldata,
+        string calldata,
+        bytes calldata  reserved
+    ) external payable override {
+        require(amount > 0, "invalid amount");
+        
+        IERC20(receiveToken).universalTransferFrom(msg.sender, owner(), amount);
+
+        scoreTransaction(msg.sender, receiveToken, amount);
+    }
 
     //デプロイ時の初期設定(各パラメータの初期値も変更する)
     constructor() {
@@ -37,52 +41,15 @@ contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
         contractOwner = _newContractOwner;
     }
 
-    //呼び出す関数の変更
+    //送金先の変更
     function updateScoreContractAddress(address _scoreContractAddress) external {
         require(msg.sender==contractOwner);
         scoreBoard = _scoreContractAddress;
     }
 
-    function receivePayment(
-        address receiveToken, 
-        uint256 amount,
-        string memory paymentId,
-        string memory optional
-    ) external payable override {
-        require(amount > 0, "invalid amount");
-        require(receiveToken != address(0), "invalid token");
-
-        IERC20(receiveToken).universalTransferFrom(
-            msg.sender,
-            owner(),
-            amount
-        );
-        // ToDo: 拡張機能として外付けする処理を実行する
-        afterReceived(msg.sender, receiveToken, amount, paymentId, optional);
-    }
-
-    //ToDo: 送金処理の実装(ここに拡張機能で呼び出したい処理を書き込む)
-    //-> Score書き込みを呼び出して、返り値を返す
-    function afterReceived(
-        address sender,
-        address receiveToken, 
-        uint256 amount,
-        string memory paymentId,
-        string memory optional
-    ) internal {
-        IfRecordScore _recordScore = IfRecordScore(scoreBoard);
-        _recordScore.scoreTransaction(
-            sender,
-            receiveToken, 
-            amount,
-            paymentId,
-            optional
-        );
-    }
-
     function withdrawToken(address tokenContract) external onlyOwner {
         require(
-            IERC20(tokenContract).universalBalanceOf(address(this)) > 0, 
+            IERC20(tokenContract).universalBalanceOf(address(this)) > 0,
             "balance is zero"
         );
 
@@ -92,11 +59,11 @@ contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
         );
 
         emit TokenWithdrawn(
-            tokenContract, 
+            tokenContract,
             IERC20(tokenContract).universalBalanceOf(address(this))
         );
-
     }
+
     event TokenWithdrawn(address tokenContract, uint256 amount);
 
     /**
@@ -106,7 +73,47 @@ contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
      * - Implement this function in the contract
      * - Return true
      */
-    function supportSlashExtensionInterface() external pure override returns (bool) {
-        return true;
+    function supportSlashExtensionInterface()
+        external
+        pure
+        override
+        returns (uint8)
+    {
+        return 2;
     }
+
+    //所定のコントラクトアドレスに対してTxの内容を書き込む
+    function scoreTransaction (
+        address _sender,
+        address _receiveToken, 
+        uint256 _amount
+    ) internal {
+        // 書き込むメッセージを定義する
+        bytes memory scoreMsg = abi.encodePacked(
+            '{"paymentFrom": "',
+            Strings.toHexString(uint160(_sender), 20),
+            '", "Token":"',
+            Strings.toHexString(uint160(_receiveToken), 20),
+            '", "amount": ',
+            Strings.toHexString(_amount),
+            '"}'
+        );
+        // noteに上記メッセージを含んだ状態で0ethの送金txを実行する
+        (bool success, ) = (scoreBoard).call{
+            value: 0 wei, 
+            gas: 30000
+        }(scoreMsg);
+        require(success, "Failed to send ether");
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    /*
+    function supportsInterface(
+        bytes4 
+    ) public view virtual override returns (bool) {
+        return false;
+    }
+    */
 }

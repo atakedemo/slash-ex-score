@@ -9,8 +9,8 @@ import contract_sample_nft from '../abi/SampleNFT.json'
 import { ethers } from 'ethers';
 
 //Contracts Info
-const contractAddress_score = "0xc1b56d19cc7d90c2fb9728497c6432313393bd44";
-const contractAddress_tx_extention = "0xdA7915297188E7a6418742DCFf183C63133DE239";
+const contractAddress_score = "0x5c9a46550fe23b3ced8610513eb403d5057abe8f";
+const contractAddress_tx_extention = "0x50ef6f3608b06b413e4e65538223bc293db941b2";
 const contractAddress_sample_nft = "0x082FE402E1a47826bB3c3Da016d27FDa4C3642Bb";
 const abi_score = contract_score.abi;
 const abi_tx_extention = contract_tx_extention.abi;
@@ -42,10 +42,10 @@ const Home: NextPage = () => {
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
     const tgtContract = new ethers.Contract(contractAddress_tx_extention, abi_tx_extention , signer);
-    let txn = await tgtContract.updateScoreContractAddress("0xdedb545e86e421ef9f26484fd49150fef3f8ccbf", {
+    let txn = await tgtContract.updateScoreContractAddress("0x5c9a46550fe23b3ced8610513eb403d5057abe8f", {
       gasLimit: 160000,
     })
-    console.log("Mining... please wait");
+    console.log("Transaction... please wait");
     await txn.wait();
 
     console.log(`See transaction: ${txn.hash}`);
