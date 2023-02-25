@@ -1,29 +1,35 @@
 # Slash Extention : キャンペーン別スコアリング
 
-### セットアップ
-```shell
-OpenZepplin
-npm install @openzeppelin/contracts
-環境変数の利用のため
-npm install dotenv
+## 機能概要
+![機能概要](Doc/01_Overall.png)  
+  
+### ユースケース
+![ユースケース](Doc/02_Usecase.png) 
+
+### 開発スコープ
+| 今回開発 | 今後追加開発したい機能 | 
+| --- | --- |
+| ・最低限の決済データ送信(金額/トークン/決済者) | ・送信するデータの拡大(決済内容の分類 等) <br>・分析用ダッシュボード(時間別KPI/KPIのカスタマイズ(UU/金額/決済数 等)) |
+
+### 機能詳細 - 決済内容の送信
+---
+## 開発成果物
+### ディレクトリ構造
 ```
-
-### コードサンプル（slashの公式ドキュメントからの引用）
-https://github.com/slash-fi-public/slash-extension-nft-minting/tree/main/contracts
-
-### 各コードの役割
-* ScoreTxExtension.sol  -> 決済時に拡張機能として呼び出されるコード
-* RecordScore           -> 実際にスコアを書くコード（上記コードから呼び出される）
-
-### 以下、Hardhatの基本的な使い方
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
-
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
+├── Contract-Payment    :　決済データ送金コントラクト(今回提出する対象)
+│   ├── artifacts
+│   ├── cache
+│   ├── contracts
+│   │   ├── interfaces
+│   │   ├── libs
+│   │   ├── ScoreTxExtension.sol : 処理部分
+│   ├── scripts
+│   ├── test
+│   └── typechain-types
+├── Contract-Receive    : 決済データの受け口（デモ用）
+├── DemoFrontend        
+│   ├── python-script   : 動作確認用スクリプト
+│   └── thirdweb-app    : 動作確認用Webサイト
+└── Doc
 ```
+### 処理内容の解説
