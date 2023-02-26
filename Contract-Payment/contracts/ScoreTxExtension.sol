@@ -6,8 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISlashCustomPlugin.sol";
 import "./libs/UniversalERC20.sol";
 
-import "./interfaces/ISlashCustomPlugin.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+//import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
     using UniversalERC20 for IERC20;
@@ -26,7 +25,7 @@ contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
         
         IERC20(receiveToken).universalTransferFrom(msg.sender, owner(), amount);
 
-        scoreTransaction(msg.sender, receiveToken, amount);
+        scoreTransaction(msg.sender, tx.origin ,receiveToken, amount, reserved);
     }
 
     //デプロイ時の初期設定(各パラメータの初期値も変更する)
@@ -45,6 +44,30 @@ contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
     function updateScoreContractAddress(address _scoreContractAddress) external {
         require(msg.sender==contractOwner);
         scoreBoard = _scoreContractAddress;
+    }
+
+    //所定のコントラクトアドレスに対してTxの内容を書き込む
+    function scoreTransaction (
+        address _sender,
+        address _txOrigin,
+        address _receiveToken, 
+        uint256 _amount,
+        bytes calldata _reserved
+    ) internal {
+        // 書き込むメッセージを定義する
+        bytes memory scoreMsg = abi.encodePacked(
+            _sender,
+            _txOrigin,
+            _receiveToken,
+            _amount,
+            _reserved
+        );
+        // noteに上記メッセージを含んだ状態で0ethの送金txを実行する
+        (bool success, ) = (scoreBoard).call{
+            value: 0 wei, 
+            gas: 30000
+        }(scoreMsg);
+        require(success, "Failed to send ether");
     }
 
     function withdrawToken(address tokenContract) external onlyOwner {
@@ -80,30 +103,6 @@ contract ScoreTxExtention is ISlashCustomPlugin, Ownable {
         returns (uint8)
     {
         return 2;
-    }
-
-    //所定のコントラクトアドレスに対してTxの内容を書き込む
-    function scoreTransaction (
-        address _sender,
-        address _receiveToken, 
-        uint256 _amount
-    ) internal {
-        // 書き込むメッセージを定義する
-        bytes memory scoreMsg = abi.encodePacked(
-            '{"paymentFrom": "',
-            Strings.toHexString(uint160(_sender), 20),
-            '", "Token":"',
-            Strings.toHexString(uint160(_receiveToken), 20),
-            '", "amount": ',
-            Strings.toHexString(_amount),
-            '"}'
-        );
-        // noteに上記メッセージを含んだ状態で0ethの送金txを実行する
-        (bool success, ) = (scoreBoard).call{
-            value: 0 wei, 
-            gas: 30000
-        }(scoreMsg);
-        require(success, "Failed to send ether");
     }
 
     /**
